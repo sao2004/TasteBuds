@@ -1,41 +1,110 @@
-import { useState } from "react";
-import { signInAnonymouslyWithFirebase } from "./auth";
+import { useState, useEffect } from "react";
+// Importurile Firebase (consolidate pentru a repara erorile de preview)
+import { initializeApp } from "firebase/app";
+import { getAuth, signInAnonymously } from "firebase/auth";
+import { 
+  getFirestore, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  updateDoc, 
+  arrayUnion, 
+  onSnapshot 
+} from "firebase/firestore";
+
+// --- Configurația Firebase ---
+const firebaseConfig = {
+  // AM REVENIT LA VERSIUNEA CORECTĂ PENTRU LOCAL:
+  // Mediul de previzualizare online afișează un avertisment (WARNING)
+  // pentru această linie, dar este modul CORECT de a o scrie
+  // pentru proiectul tău local Vite (cu fișierul .env).
+  apiKey: import.meta.env.VITE_FIREBASE_KEY, 
+  authDomain: "tastebuds-276c4.firebaseapp.com",
+  projectId: "tastebuds-276c4",
+  storageBucket: "tastebuds-276c4.firebasestorage.app",
+  messagingSenderId: "840316666294",
+  appId: "1:840316666294:web:c02597439cc9ecd6df8117",
+};
+
+// Inițializare Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+// ... restul codului rămâne neschimbat ...
+// --- Funcția de autentificare ---
+const signInAnonymouslyWithFirebase = async () => {
+  try {
+    await signInAnonymously(auth);
+    return auth.currentUser.uid;
+  } catch (error) {
+    console.error("Error signing in anonymously:", error);
+    // AM ADĂUGAT: Aruncă eroarea mai departe pentru a fi prinsă de handleLogin
+    throw error; 
+  }
+};
+
+// --- Lista de restaurante simulate ---
+const MOCK_RESTAURANT_LIST = [
+  { id: "mock1", name: "Restaurantul A (Simulat)", cuisine: "Italian", img: "https://placehold.co/600x400/F2C94C/27272A?text=Restaurant+A" },
+  { id: "mock2", name: "Restaurantul B (Simulat)", cuisine: "Mexican", img: "https://placehold.co/600x400/EB5757/27272A?text=Restaurant+B" },
+  { id: "mock3", name: "Restaurantul C (Simulat)", cuisine: "Indian", img: "https://placehold.co/600x400/2F80ED/27272A?text=Restaurant+C" },
+  { id: "mock4", name: "Restaurantul D (Simulat)", cuisine: "Japonez", img: "https://placehold.co/600x400/27AE60/27272A?text=Restaurant+D" },
+  { id: "mock5", name: "Restaurantul E (Simulat)", cuisine: "American", img: "https://placehold.co/600x400/9B51E0/27272A?text=Restaurant+E" },
+];
+
+// --- Helper pentru a genera un cod de cameră ---
+function generateRoomCode() {
+  return Math.random().toString(36).substring(2, 7).toUpperCase();
+}
+
+
+// --- Componentele (Login, Home, Swipe) ---
 
 function LoginScreen({ onLogin }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleLoginClick = async (type) => {
+    setLoading(true);
+    if (type === "Guest") {
+      await onLogin();
+    } else {
+      console.log("Login type not implemented:", type);
+      setLoading(false);
+    }
+    // AM MODIFICAT: Asigură-te că loading se oprește
+    setLoading(false);
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4">
       <h1 className="text-4xl font-bold text-white mb-8">TasteBuds</h1>
       <div className="w-full max-w-sm bg-gray-800 rounded-2xl shadow-2xl p-8">
         <h2 className="text-2xl text-center font-semibold mb-6">Login</h2>
-
-        {}
         <div className="flex flex-col gap-4">
           <button
-            onClick={() => onLogin("Sign in")}
-            className="w-full bg-green-600 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-green-700 transition"
+            onClick={() => handleLoginClick("Sign in")}
+            disabled={loading}
+            className="w-full bg-green-600 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-green-700 transition disabled:bg-gray-500"
           >
             Sign In
           </button>
-
           <button
-            onClick={() => onLogin("Log in")}
-            className="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-blue-700 transition"
+            onClick={() => handleLoginClick("Log in")}
+            disabled={loading}
+            className="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-blue-700 transition disabled:bg-gray-500"
           >
             Log In
           </button>
-
           <div className="relative flex items-center justify-center my-2">
             <span className="absolute left-0 right-0 h-px bg-gray-600"></span>
-            <span className="relative bg-gray-800 px-3 text-sm text-gray-400">
-              OR
-            </span>
+            <span className="relative bg-gray-800 px-3 text-sm text-gray-400">OR</span>
           </div>
-
           <button
-            onClick={() => onLogin("Guest")}
-            className="w-full bg-gray-600 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-gray-700 transition"
+            onClick={() => handleLoginClick("Guest")}
+            disabled={loading}
+            className="w-full bg-gray-600 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-gray-700 transition disabled:bg-gray-500"
           >
-            Continue as Guest
+            {loading ? "Logging in..." : "Continue as Guest"}
           </button>
         </div>
       </div>
@@ -43,7 +112,7 @@ function LoginScreen({ onLogin }) {
   );
 }
 
-function HomeScreen({ onCreate, onJoin }) {
+function HomeScreen({ onCreate, onJoin, loading, errorMessage }) {
   const [roomCode, setRoomCode] = useState("");
 
   const handleJoinClick = () => {
@@ -56,34 +125,35 @@ function HomeScreen({ onCreate, onJoin }) {
     <div className="flex flex-col items-center justify-center min-h-screen p-4">
       <div className="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-8 text-center">
         <h1 className="text-4xl font-bold text-white mb-8">Start a Room</h1>
-
-        {}
+        
+        {errorMessage && <p className="text-red-400 mb-4">{errorMessage}</p>}
+        
         <button
           onClick={onCreate}
-          className="w-full bg-green-600 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-green-700 transition shadow-lg mb-6"
+          disabled={loading}
+          className="w-full bg-green-600 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-green-700 transition shadow-lg mb-6 disabled:bg-gray-500"
         >
-          Create New Room
+          {loading ? "Finding location..." : "Find Restaurants Near Me"}
         </button>
-
+        
         <div className="relative flex items-center justify-center mb-6">
           <span className="absolute left-0 right-0 h-px bg-gray-600"></span>
-          <span className="relative bg-gray-800 px-3 text-sm text-gray-400">
-            OR
-          </span>
+          <span className="relative bg-gray-800 px-3 text-sm text-gray-400">OR</span>
         </div>
-
-        {}
+        
         <div className="flex flex-col gap-4">
           <input
             type="text"
             value={roomCode}
             onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
             placeholder="Enter Room Code"
-            className="w-full bg-gray-700 border border-gray-600 text-white text-center rounded-lg p-3 text-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+            disabled={loading}
+            className="w-full bg-gray-700 border border-gray-600 text-white text-center rounded-lg p-3 text-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-600"
           />
           <button
             onClick={handleJoinClick}
-            className="w-full bg-gray-600 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-gray-700 transition shadow-lg"
+            disabled={loading}
+            className="w-full bg-gray-600 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-gray-700 transition shadow-lg disabled:bg-gray-500"
           >
             Join Room
           </button>
@@ -93,24 +163,74 @@ function HomeScreen({ onCreate, onJoin }) {
   );
 }
 
-function SwipeScreen({ roomId, onLeave }) {
-  const restaurant = {
-    name: "The Golden Spoon",
-    cuisine: "Italian",
-    img: "https://placehold.co/600x400/F2C94C/27272A?text=The+Golden+Spoon",
-  };
+function SwipeScreen({ roomData, onLeave, onSwipe, userId }) {
+  // Stare pentru a urmări succesul copierii
+  const [copySuccess, setCopySuccess] = useState(false);
 
-  const handleSwipe = (direction) => {
-    // date firebase
-    console.log(`Swiped ${direction} on ${restaurant.name}`);
+  const mySwipes = roomData.swipes[userId] || {};
+  const nextRestaurant = roomData.restaurants.find(
+    (r) => mySwipes[r.id] === undefined
+  );
+
+  const matches = roomData.restaurants.filter((r) =>
+    roomData.matches.includes(r.id)
+  );
+  
+  // Funcție pentru a copia codul
+  const handleCopyRoomCode = () => {
+    // Folosește execCommand pentru compatibilitate în iFrame
+    const input = document.createElement('input');
+    input.style.position = 'absolute';
+    input.style.left = '-9999px';
+    input.value = roomData.id;
+    document.body.appendChild(input);
+    input.select();
+    try {
+      document.execCommand('copy');
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000); // Resetează după 2 secunde
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+    document.body.removeChild(input);
   };
+  
+  if (!nextRestaurant) {
+    return (
+      <div className="flex flex-col items-center min-h-screen p-4 pt-8 md:p-8 text-center">
+        <h2 className="text-2xl font-bold text-white mb-4">All done!</h2>
+        <p className="text-gray-400 mb-8">Waiting for other players...</p>
+        
+        {/* Secțiunea de cod de cameră și aici */}
+        <div className="mb-8 p-4 bg-gray-800 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-2 w-full max-w-md">
+          <div className="text-center sm:text-left">
+            <span className="text-gray-400 text-sm">Room Code:</span>
+            <span className="text-white font-mono text-2xl ml-2">{roomData.id}</span>
+          </div>
+          <button
+            onClick={handleCopyRoomCode}
+            className="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-md hover:bg-green-700 transition w-full sm:w-auto"
+          >
+            {copySuccess ? "Copied!" : "Copy Code"}
+          </button>
+        </div>
+
+        <MatchesList matches={matches} />
+        <button
+          onClick={onLeave}
+          className="mt-8 text-sm text-gray-400 hover:text-red-500 transition"
+        >
+          Leave Room
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center min-h-screen p-4 pt-8 md:p-8">
       <div className="w-full max-w-md">
-        {}
         <div className="flex justify-between items-center mb-6 w-full">
-          <h1 className="text-xl font-bold text-white">Room: {roomId}</h1>
+          <span className="text-xl font-bold text-white">TasteBuds</span>
           <button
             onClick={onLeave}
             className="text-sm text-gray-400 hover:text-red-500 transition"
@@ -119,28 +239,47 @@ function SwipeScreen({ roomId, onLeave }) {
           </button>
         </div>
 
-        {}
+        {/* O secțiune proeminentă pentru codul camerei */}
+        <div className="mb-8 p-4 bg-gray-800 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div className="text-center sm:text-left">
+            <span className="text-gray-400 text-sm">Room Code:</span>
+            <span className="text-white font-mono text-2xl ml-2">{roomData.id}</span>
+          </div>
+          <button
+            onClick={handleCopyRoomCode}
+            className="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-md hover:bg-green-700 transition w-full sm:w-auto"
+          >
+            {copySuccess ? "Copied!" : "Copy Code"}
+          </button>
+        </div>
+
+        {/* Mesaj de așteptare dacă ești singur */}
+        {roomData.users.length < 2 && (
+          <div className="mb-8 p-4 bg-blue-900 border border-blue-700 text-blue-200 rounded-lg text-center">
+            Waiting for another person to join... Share the room code!
+          </div>
+        )}
+        
         <div className="bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
           <img
-            src={restaurant.img}
-            alt={restaurant.name}
+            src={nextRestaurant.img}
+            alt={nextRestaurant.name}
             className="w-full h-64 object-cover"
           />
           <div className="p-6">
             <h2 className="text-3xl font-bold text-white mb-2">
-              {restaurant.name}
+              {nextRestaurant.name}
             </h2>
-            <p className="text-lg text-gray-400 mb-6">{restaurant.cuisine}</p>
-
+            <p className="text-lg text-gray-400 mb-6">{nextRestaurant.cuisine}</p>
             <div className="flex justify-around gap-4">
               <button
-                onClick={() => handleSwipe("left")}
+                onClick={() => onSwipe(nextRestaurant.id, "left")}
                 className="w-1/2 bg-red-600 text-white font-bold py-4 px-6 rounded-lg text-2xl hover:bg-red-700 transition transform hover:scale-105"
               >
                 No
               </button>
               <button
-                onClick={() => handleSwipe("right")}
+                onClick={() => onSwipe(nextRestaurant.id, "right")}
                 className="w-1/2 bg-green-600 text-white font-bold py-4 px-6 rounded-lg text-2xl hover:bg-green-700 transition transform hover:scale-105"
               >
                 Yes
@@ -148,60 +287,244 @@ function SwipeScreen({ roomId, onLeave }) {
             </div>
           </div>
         </div>
-
-        {}
-        <div className="mt-8">
-          <h3 className="text-2xl font-bold text-white mb-4">Matches</h3>
-          <div className="bg-gray-800 p-6 rounded-lg text-center">
-            <p className="text-gray-400">No matches yet!</p>
-          </div>
-        </div>
+        
+        <MatchesList matches={matches} />
       </div>
     </div>
   );
 }
 
+function MatchesList({ matches }) {
+  return (
+    <div className="mt-8 w-full">
+      <h3 className="text-2xl font-bold text-white mb-4">
+        Matches ({matches.length})
+      </h3>
+      {matches.length === 0 ? (
+        <div className="bg-gray-800 p-6 rounded-lg text-center">
+          <p className="text-gray-400">No matches yet!</p>
+        </div>
+      ) : (
+        <ul className="space-y-3">
+          {matches.map((r) => (
+            <li key={r.id} className="bg-gray-800 p-4 rounded-lg shadow-md">
+              <h4 className="text-xl font-semibold text-white">{r.name}</h4>
+              <p className="text-gray-400">{r.cuisine}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+
+// --- Componenta principală App ---
 export default function App() {
   const [user, setUser] = useState(null);
-
   const [roomId, setRoomId] = useState(null);
+  const [roomData, setRoomData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    if (!roomId) {
+      setRoomData(null);
+      return;
+    }
+
+    const roomRef = doc(db, "rooms", roomId);
+    const unsubscribe = onSnapshot(roomRef, (doc) => {
+      if (doc.exists()) {
+        setRoomData(doc.data());
+      } else {
+        setErrorMessage("Room not found.");
+        setRoomId(null);
+      }
+    }, (error) => {
+      console.error(error);
+      setErrorMessage("Error listening to room.");
+      setRoomId(null);
+    });
+
+    return () => unsubscribe();
+  }, [roomId]);
+
+  // --- Funcții de business ---
 
   const handleLogin = async () => {
     console.log("Logging in...");
-
-    const uid = await signInAnonymouslyWithFirebase();
-
-    setUser({ id: uid, name: "Guest" });
-    // console.log("Logging in as:", loginType);
-    // setUser({ id: "user-123", name: "Guest" });
+    setLoading(true);
+    setErrorMessage(""); // Resetează eroarea
+    try {
+      const uid = await signInAnonymouslyWithFirebase();
+      if (uid) {
+        setUser({ id: uid, name: "Guest" });
+      } else {
+        setErrorMessage("Anonymous login failed.");
+      }
+    } catch (error) {
+      // Eroarea reală va fi prinsă aici
+      setErrorMessage(error.message); 
+      console.error(error); // Păstrează logul în consolă
+    }
+    setLoading(false);
   };
 
-  const handleJoinRoom = (code) => {
-    console.log("Joining room:", code);
-    setRoomId(code);
+  const handleJoinRoom = async (code) => {
+    if (!code) return;
+    setLoading(true);
+    setErrorMessage("");
+    
+    const roomRef = doc(db, "rooms", code);
+    try {
+      const docSnap = await getDoc(roomRef);
+      if (docSnap.exists()) {
+        await updateDoc(roomRef, {
+          users: arrayUnion(user.id),
+          [`swipes.${user.id}`]: docSnap.data().swipes[user.id] || {} // AM MODIFICAT: Să nu suprascrie voturile existente
+        });
+        setRoomId(code);
+      } else {
+        setErrorMessage("Room not found.");
+      }
+    } catch (error) {
+      setErrorMessage("Failed to join room.");
+      console.error(error);
+    }
+    setLoading(false);
   };
 
   const handleCreateRoom = () => {
-    const newCode = "ABCDE";
-    console.log("Creating room:", newCode);
-    setRoomId(newCode);
+    setLoading(true);
+    setErrorMessage("");
+
+    if (!navigator.geolocation) {
+      setErrorMessage("Geolocation is not supported by your browser.");
+      setLoading(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        console.log("Got location:", { latitude, longitude });
+
+        console.log("Simulating API call to Google Places...");
+        setTimeout(async () => {
+          try {
+            const restaurants = MOCK_RESTAURANT_LIST;
+            
+            const newCode = generateRoomCode();
+            const roomRef = doc(db, "rooms", newCode);
+            const newRoomData = {
+              id: newCode,
+              users: [user.id],
+              restaurants: restaurants,
+              swipes: {
+                [user.id]: {}
+              },
+              matches: [],
+              created: new Date().toISOString(),
+            };
+            
+            await setDoc(roomRef, newRoomData);
+            setRoomId(newCode);
+
+          } catch (error) {
+            setErrorMessage("Failed to create room in database.");
+            console.error(error);
+          } finally {
+            setLoading(false);
+          }
+        }, 2000);
+      },
+      (error) => {
+        setErrorMessage("Failed to get location. Please enable it.");
+        console.error("Geolocation error:", error);
+        setLoading(false);
+      }
+    );
   };
 
   const handleLeaveRoom = () => {
     setRoomId(null);
+    setRoomData(null);
   };
+
+  const handleSwipe = async (restaurantId, direction) => {
+    if (!roomData || !user) return;
+
+    const roomRef = doc(db, "rooms", roomId);
+    const userSwipePath = `swipes.${user.id}.${restaurantId}`;
+    
+    // 1. Înregistrează votul (folosind datele curente, înainte de a prelua)
+    if (roomData.swipes[user.id]) {
+       roomData.swipes[user.id][restaurantId] = direction;
+    } else {
+       roomData.swipes[user.id] = { [restaurantId]: direction };
+    }
+    
+    // Actualizează Firestore în fundal
+    await updateDoc(roomRef, {
+      [userSwipePath]: direction
+    });
+
+    // 2. Verifică dacă e potrivire (doar dacă ai votat "dreapta")
+    if (direction === "right") {
+      // Re-preia cele mai recente date după actualizare pentru a verifica potrivirea
+      const updatedDocSnap = await getDoc(roomRef);
+      const currentRoomData = updatedDocSnap.data();
+      
+      const otherUsers = currentRoomData.users.filter(uid => uid !== user.id);
+      
+      let isMatch = true;
+      // Asigură-te că există și alți utilizatori înainte de a verifica
+      if (otherUsers.length > 0) {
+        for (const otherId of otherUsers) {
+          // Dacă oricare alt utilizator nu a votat "dreapta", nu este o potrivire
+          if (currentRoomData.swipes[otherId]?.[restaurantId] !== "right") {
+            isMatch = false;
+            break;
+          }
+        }
+      } else {
+        // Dacă ești singur în cameră, nu poate fi o potrivire
+        isMatch = false;
+      }
+
+      if (isMatch && !currentRoomData.matches.includes(restaurantId)) {
+        await updateDoc(roomRef, {
+          matches: arrayUnion(restaurantId)
+        });
+      }
+    }
+  };
+
+
+  // --- Logica de Randare Principală ---
 
   if (!user) {
     return <LoginScreen onLogin={handleLogin} />;
   }
 
-  if (user && !roomId) {
-    return <HomeScreen onCreate={handleCreateRoom} onJoin={handleJoinRoom} />;
+  if (!roomData) {
+    return (
+      <HomeScreen 
+        onCreate={handleCreateRoom} 
+        onJoin={handleJoinRoom} 
+        loading={loading}
+        errorMessage={errorMessage}
+      />
+    );
   }
 
-  if (user && roomId) {
-    return <SwipeScreen roomId={roomId} onLeave={handleLeaveRoom} />;
-  }
-
-  return <div>Loading...</div>;
+  return (
+    <SwipeScreen 
+      roomData={roomData} 
+      onLeave={handleLeaveRoom}
+      onSwipe={handleSwipe}
+      userId={user.id}
+    />
+  );
 }
