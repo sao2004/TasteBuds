@@ -1,64 +1,63 @@
 import { useState, useEffect } from "react";
-// Importurile Firebase (consolidate pentru a repara erorile de preview)
-import { initializeApp } from "firebase/app";
-import { getAuth, signInAnonymously } from "firebase/auth";
-import { 
-  getFirestore, 
-  doc, 
-  setDoc, 
-  getDoc, 
-  updateDoc, 
-  arrayUnion, 
-  onSnapshot 
+import { signInAnonymously } from "firebase/auth";
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  arrayUnion,
+  onSnapshot,
 } from "firebase/firestore";
+import { auth, db } from "./firebase";
 
-// --- Configurația Firebase ---
-const firebaseConfig = {
-  // AM REVENIT LA VERSIUNEA CORECTĂ PENTRU LOCAL:
-  // Mediul de previzualizare online afișează un avertisment (WARNING)
-  // pentru această linie, dar este modul CORECT de a o scrie
-  // pentru proiectul tău local Vite (cu fișierul .env).
-  apiKey: import.meta.env.VITE_FIREBASE_KEY, 
-  authDomain: "tastebuds-276c4.firebaseapp.com",
-  projectId: "tastebuds-276c4",
-  storageBucket: "tastebuds-276c4.firebasestorage.app",
-  messagingSenderId: "840316666294",
-  appId: "1:840316666294:web:c02597439cc9ecd6df8117",
-};
-
-// Inițializare Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-// ... restul codului rămâne neschimbat ...
-// --- Funcția de autentificare ---
 const signInAnonymouslyWithFirebase = async () => {
   try {
     await signInAnonymously(auth);
     return auth.currentUser.uid;
   } catch (error) {
     console.error("Error signing in anonymously:", error);
-    // AM ADĂUGAT: Aruncă eroarea mai departe pentru a fi prinsă de handleLogin
-    throw error; 
+    throw error;
   }
 };
 
-// --- Lista de restaurante simulate ---
+//
 const MOCK_RESTAURANT_LIST = [
-  { id: "mock1", name: "Restaurantul A (Simulat)", cuisine: "Italian", img: "https://placehold.co/600x400/F2C94C/27272A?text=Restaurant+A" },
-  { id: "mock2", name: "Restaurantul B (Simulat)", cuisine: "Mexican", img: "https://placehold.co/600x400/EB5757/27272A?text=Restaurant+B" },
-  { id: "mock3", name: "Restaurantul C (Simulat)", cuisine: "Indian", img: "https://placehold.co/600x400/2F80ED/27272A?text=Restaurant+C" },
-  { id: "mock4", name: "Restaurantul D (Simulat)", cuisine: "Japonez", img: "https://placehold.co/600x400/27AE60/27272A?text=Restaurant+D" },
-  { id: "mock5", name: "Restaurantul E (Simulat)", cuisine: "American", img: "https://placehold.co/600x400/9B51E0/27272A?text=Restaurant+E" },
+  {
+    id: "mock1",
+    name: "Restaurantul A (Simulat)",
+    cuisine: "Italian",
+    img: "https://placehold.co/600x400/F2C94C/27272A?text=Restaurant+A",
+  },
+  {
+    id: "mock2",
+    name: "Restaurantul B (Simulat)",
+    cuisine: "Mexican",
+    img: "https://placehold.co/600x400/EB5757/27272A?text=Restaurant+B",
+  },
+  {
+    id: "mock3",
+    name: "Restaurantul C (Simulat)",
+    cuisine: "Indian",
+    img: "https://placehold.co/600x400/2F80ED/27272A?text=Restaurant+C",
+  },
+  {
+    id: "mock4",
+    name: "Restaurantul D (Simulat)",
+    cuisine: "Japonez",
+    img: "https://placehold.co/600x400/27AE60/27272A?text=Restaurant+D",
+  },
+  {
+    id: "mock5",
+    name: "Restaurantul E (Simulat)",
+    cuisine: "American",
+    img: "https://placehold.co/600x400/9B51E0/27272A?text=Restaurant+E",
+  },
 ];
 
-// --- Helper pentru a genera un cod de cameră ---
 function generateRoomCode() {
   return Math.random().toString(36).substring(2, 7).toUpperCase();
 }
-
-
-// --- Componentele (Login, Home, Swipe) ---
 
 function LoginScreen({ onLogin }) {
   const [loading, setLoading] = useState(false);
@@ -71,7 +70,6 @@ function LoginScreen({ onLogin }) {
       console.log("Login type not implemented:", type);
       setLoading(false);
     }
-    // AM MODIFICAT: Asigură-te că loading se oprește
     setLoading(false);
   };
 
@@ -97,7 +95,9 @@ function LoginScreen({ onLogin }) {
           </button>
           <div className="relative flex items-center justify-center my-2">
             <span className="absolute left-0 right-0 h-px bg-gray-600"></span>
-            <span className="relative bg-gray-800 px-3 text-sm text-gray-400">OR</span>
+            <span className="relative bg-gray-800 px-3 text-sm text-gray-400">
+              OR
+            </span>
           </div>
           <button
             onClick={() => handleLoginClick("Guest")}
@@ -125,9 +125,9 @@ function HomeScreen({ onCreate, onJoin, loading, errorMessage }) {
     <div className="flex flex-col items-center justify-center min-h-screen p-4">
       <div className="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-8 text-center">
         <h1 className="text-4xl font-bold text-white mb-8">Start a Room</h1>
-        
+
         {errorMessage && <p className="text-red-400 mb-4">{errorMessage}</p>}
-        
+
         <button
           onClick={onCreate}
           disabled={loading}
@@ -135,12 +135,14 @@ function HomeScreen({ onCreate, onJoin, loading, errorMessage }) {
         >
           {loading ? "Finding location..." : "Find Restaurants Near Me"}
         </button>
-        
+
         <div className="relative flex items-center justify-center mb-6">
           <span className="absolute left-0 right-0 h-px bg-gray-600"></span>
-          <span className="relative bg-gray-800 px-3 text-sm text-gray-400">OR</span>
+          <span className="relative bg-gray-800 px-3 text-sm text-gray-400">
+            OR
+          </span>
         </div>
-        
+
         <div className="flex flex-col gap-4">
           <input
             type="text"
@@ -164,48 +166,47 @@ function HomeScreen({ onCreate, onJoin, loading, errorMessage }) {
 }
 
 function SwipeScreen({ roomData, onLeave, onSwipe, userId }) {
-  // Stare pentru a urmări succesul copierii
   const [copySuccess, setCopySuccess] = useState(false);
 
   const mySwipes = roomData.swipes[userId] || {};
   const nextRestaurant = roomData.restaurants.find(
-    (r) => mySwipes[r.id] === undefined
+    (r) => mySwipes[r.id] === undefined,
   );
 
   const matches = roomData.restaurants.filter((r) =>
-    roomData.matches.includes(r.id)
+    roomData.matches.includes(r.id),
   );
-  
-  // Funcție pentru a copia codul
+
+  // copiere room code
   const handleCopyRoomCode = () => {
-    // Folosește execCommand pentru compatibilitate în iFrame
-    const input = document.createElement('input');
-    input.style.position = 'absolute';
-    input.style.left = '-9999px';
+    const input = document.createElement("input");
+    input.style.position = "absolute";
+    input.style.left = "-9999px";
     input.value = roomData.id;
     document.body.appendChild(input);
     input.select();
     try {
-      document.execCommand('copy');
+      document.execCommand("copy");
       setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000); // Resetează după 2 secunde
+      setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
-      console.error('Failed to copy text: ', err);
+      console.error("Failed to copy text: ", err);
     }
     document.body.removeChild(input);
   };
-  
+
   if (!nextRestaurant) {
     return (
       <div className="flex flex-col items-center min-h-screen p-4 pt-8 md:p-8 text-center">
         <h2 className="text-2xl font-bold text-white mb-4">All done!</h2>
         <p className="text-gray-400 mb-8">Waiting for other players...</p>
-        
-        {/* Secțiunea de cod de cameră și aici */}
+
         <div className="mb-8 p-4 bg-gray-800 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-2 w-full max-w-md">
           <div className="text-center sm:text-left">
             <span className="text-gray-400 text-sm">Room Code:</span>
-            <span className="text-white font-mono text-2xl ml-2">{roomData.id}</span>
+            <span className="text-white font-mono text-2xl ml-2">
+              {roomData.id}
+            </span>
           </div>
           <button
             onClick={handleCopyRoomCode}
@@ -239,11 +240,12 @@ function SwipeScreen({ roomData, onLeave, onSwipe, userId }) {
           </button>
         </div>
 
-        {/* O secțiune proeminentă pentru codul camerei */}
         <div className="mb-8 p-4 bg-gray-800 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="text-center sm:text-left">
             <span className="text-gray-400 text-sm">Room Code:</span>
-            <span className="text-white font-mono text-2xl ml-2">{roomData.id}</span>
+            <span className="text-white font-mono text-2xl ml-2">
+              {roomData.id}
+            </span>
           </div>
           <button
             onClick={handleCopyRoomCode}
@@ -253,13 +255,12 @@ function SwipeScreen({ roomData, onLeave, onSwipe, userId }) {
           </button>
         </div>
 
-        {/* Mesaj de așteptare dacă ești singur */}
         {roomData.users.length < 2 && (
           <div className="mb-8 p-4 bg-blue-900 border border-blue-700 text-blue-200 rounded-lg text-center">
             Waiting for another person to join... Share the room code!
           </div>
         )}
-        
+
         <div className="bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
           <img
             src={nextRestaurant.img}
@@ -270,7 +271,9 @@ function SwipeScreen({ roomData, onLeave, onSwipe, userId }) {
             <h2 className="text-3xl font-bold text-white mb-2">
               {nextRestaurant.name}
             </h2>
-            <p className="text-lg text-gray-400 mb-6">{nextRestaurant.cuisine}</p>
+            <p className="text-lg text-gray-400 mb-6">
+              {nextRestaurant.cuisine}
+            </p>
             <div className="flex justify-around gap-4">
               <button
                 onClick={() => onSwipe(nextRestaurant.id, "left")}
@@ -287,7 +290,7 @@ function SwipeScreen({ roomData, onLeave, onSwipe, userId }) {
             </div>
           </div>
         </div>
-        
+
         <MatchesList matches={matches} />
       </div>
     </div>
@@ -318,8 +321,6 @@ function MatchesList({ matches }) {
   );
 }
 
-
-// --- Componenta principală App ---
 export default function App() {
   const [user, setUser] = useState(null);
   const [roomId, setRoomId] = useState(null);
@@ -334,28 +335,30 @@ export default function App() {
     }
 
     const roomRef = doc(db, "rooms", roomId);
-    const unsubscribe = onSnapshot(roomRef, (doc) => {
-      if (doc.exists()) {
-        setRoomData(doc.data());
-      } else {
-        setErrorMessage("Room not found.");
+    const unsubscribe = onSnapshot(
+      roomRef,
+      (doc) => {
+        if (doc.exists()) {
+          setRoomData(doc.data());
+        } else {
+          setErrorMessage("Room not found.");
+          setRoomId(null);
+        }
+      },
+      (error) => {
+        console.error(error);
+        setErrorMessage("Error listening to room.");
         setRoomId(null);
-      }
-    }, (error) => {
-      console.error(error);
-      setErrorMessage("Error listening to room.");
-      setRoomId(null);
-    });
+      },
+    );
 
     return () => unsubscribe();
   }, [roomId]);
 
-  // --- Funcții de business ---
-
   const handleLogin = async () => {
     console.log("Logging in...");
     setLoading(true);
-    setErrorMessage(""); // Resetează eroarea
+    setErrorMessage("");
     try {
       const uid = await signInAnonymouslyWithFirebase();
       if (uid) {
@@ -364,9 +367,8 @@ export default function App() {
         setErrorMessage("Anonymous login failed.");
       }
     } catch (error) {
-      // Eroarea reală va fi prinsă aici
-      setErrorMessage(error.message); 
-      console.error(error); // Păstrează logul în consolă
+      setErrorMessage(error.message);
+      console.error(error);
     }
     setLoading(false);
   };
@@ -375,14 +377,14 @@ export default function App() {
     if (!code) return;
     setLoading(true);
     setErrorMessage("");
-    
+
     const roomRef = doc(db, "rooms", code);
     try {
       const docSnap = await getDoc(roomRef);
       if (docSnap.exists()) {
         await updateDoc(roomRef, {
           users: arrayUnion(user.id),
-          [`swipes.${user.id}`]: docSnap.data().swipes[user.id] || {} // AM MODIFICAT: Să nu suprascrie voturile existente
+          [`swipes.${user.id}`]: docSnap.data().swipes[user.id] || {},
         });
         setRoomId(code);
       } else {
@@ -414,7 +416,7 @@ export default function App() {
         setTimeout(async () => {
           try {
             const restaurants = MOCK_RESTAURANT_LIST;
-            
+
             const newCode = generateRoomCode();
             const roomRef = doc(db, "rooms", newCode);
             const newRoomData = {
@@ -422,15 +424,14 @@ export default function App() {
               users: [user.id],
               restaurants: restaurants,
               swipes: {
-                [user.id]: {}
+                [user.id]: {},
               },
               matches: [],
               created: new Date().toISOString(),
             };
-            
+
             await setDoc(roomRef, newRoomData);
             setRoomId(newCode);
-
           } catch (error) {
             setErrorMessage("Failed to create room in database.");
             console.error(error);
@@ -443,7 +444,7 @@ export default function App() {
         setErrorMessage("Failed to get location. Please enable it.");
         console.error("Geolocation error:", error);
         setLoading(false);
-      }
+      },
     );
   };
 
@@ -457,52 +458,43 @@ export default function App() {
 
     const roomRef = doc(db, "rooms", roomId);
     const userSwipePath = `swipes.${user.id}.${restaurantId}`;
-    
-    // 1. Înregistrează votul (folosind datele curente, înainte de a prelua)
+
     if (roomData.swipes[user.id]) {
-       roomData.swipes[user.id][restaurantId] = direction;
+      roomData.swipes[user.id][restaurantId] = direction;
     } else {
-       roomData.swipes[user.id] = { [restaurantId]: direction };
+      roomData.swipes[user.id] = { [restaurantId]: direction };
     }
-    
-    // Actualizează Firestore în fundal
+
     await updateDoc(roomRef, {
-      [userSwipePath]: direction
+      [userSwipePath]: direction,
     });
 
-    // 2. Verifică dacă e potrivire (doar dacă ai votat "dreapta")
     if (direction === "right") {
-      // Re-preia cele mai recente date după actualizare pentru a verifica potrivirea
       const updatedDocSnap = await getDoc(roomRef);
       const currentRoomData = updatedDocSnap.data();
-      
-      const otherUsers = currentRoomData.users.filter(uid => uid !== user.id);
-      
+
+      const otherUsers = currentRoomData.users.filter((uid) => uid !== user.id);
+
       let isMatch = true;
-      // Asigură-te că există și alți utilizatori înainte de a verifica
+
       if (otherUsers.length > 0) {
         for (const otherId of otherUsers) {
-          // Dacă oricare alt utilizator nu a votat "dreapta", nu este o potrivire
           if (currentRoomData.swipes[otherId]?.[restaurantId] !== "right") {
             isMatch = false;
             break;
           }
         }
       } else {
-        // Dacă ești singur în cameră, nu poate fi o potrivire
         isMatch = false;
       }
 
       if (isMatch && !currentRoomData.matches.includes(restaurantId)) {
         await updateDoc(roomRef, {
-          matches: arrayUnion(restaurantId)
+          matches: arrayUnion(restaurantId),
         });
       }
     }
   };
-
-
-  // --- Logica de Randare Principală ---
 
   if (!user) {
     return <LoginScreen onLogin={handleLogin} />;
@@ -510,9 +502,9 @@ export default function App() {
 
   if (!roomData) {
     return (
-      <HomeScreen 
-        onCreate={handleCreateRoom} 
-        onJoin={handleJoinRoom} 
+      <HomeScreen
+        onCreate={handleCreateRoom}
+        onJoin={handleJoinRoom}
         loading={loading}
         errorMessage={errorMessage}
       />
@@ -520,8 +512,8 @@ export default function App() {
   }
 
   return (
-    <SwipeScreen 
-      roomData={roomData} 
+    <SwipeScreen
+      roomData={roomData}
       onLeave={handleLeaveRoom}
       onSwipe={handleSwipe}
       userId={user.id}
