@@ -1,3 +1,3 @@
 # TasteBuds
 
-![screenshot](images/UML.jpeg)
+![screenshot](images/UML.png)

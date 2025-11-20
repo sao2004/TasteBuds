@@ -1,9 +1,11 @@
 @import "tailwindcss";
 
 body {
-  background-image: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0)), url('/images/fundal.jpg');
-  background-size: cover;
-  background-position: center;
-  background-attachment: fixed;
-  background-repeat: no-repeat;
+    background-image:
+        linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, 0)),
+        url("/images/fundal.jpg");
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    background-repeat: no-repeat;
 }
