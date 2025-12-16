@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { signInAnonymously } from "firebase/auth";
+import { signInAnonymouslyWithFirebase } from "./auth";
 import {
   getFirestore,
   doc,
@@ -14,16 +14,6 @@ import { auth, db } from "./firebase";
 function generateRoomCode() {
   return Math.random().toString(36).substring(2, 7).toUpperCase();
 }
-
-const signInAnonymouslyWithFirebase = async () => {
-  try {
-    await signInAnonymously(auth);
-    return auth.currentUser.uid;
-  } catch (error) {
-    console.error("Error signing in anonymously:", error);
-    throw error;
-  }
-};
 
 // LoginScreen
 function LoginScreen({ onLogin }) {
