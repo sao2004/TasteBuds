@@ -5,19 +5,19 @@ Tastebuds is a web application that allows users to find restaurants near their 
 ### 1. Login Screen
 Secure entry into the app. Users can choose between a synchronized experience via Google or a quick anonymous Guest session.
 <p align="center">
-  <img src="images/login_screen.png" width="400" alt="Login Screen">
+  <img src="images/login_screen.png" width="100%" alt="Login Screen">
 </p>
 
 ### 2. Home Screen
 The main hub where you can create a new room based on your current GPS location or join a friend's room using a unique code. Your personal dining history is also displayed here.
 <p align="center">
-  <img src="images/home_screen.png" width="400" alt="Home Screen">
+  <img src="images/home_screen.png" width="100%" alt="Home Screen">
 </p>
 
 ### 3. Swipe Screen
 The core experience. Press "Yes" or "No" on restaurant cards. Matches are tracked in real-time as your group votes.
 <p align="center">
-  <img src="images/swipe_screen.png" width="400" alt="Swipe Screen">
+  <img src="images/swipe_screen.png" width="100%" alt="Swipe Screen">
 </p>
 
 ## Features
