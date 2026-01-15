@@ -19,10 +19,10 @@ import { useState, useEffect } from "react";
 
     // LoginScreen
     function LoginScreen({ onLogin }) {
-      const [loading, setLoading] = useState(false);
+      const [loading, setLoading] = useState(null);
 
       const handleLoginClick = async (type) => {
-        setLoading(true);
+        setLoading(type);
         if (type === "Guest") {
           await onLogin();
         } else if (type === "Google") {
@@ -33,7 +33,7 @@ import { useState, useEffect } from "react";
         } else {
           console.log("Login type not implemented:", type);
         }
-        setLoading(false);
+        setLoading(null);
       };
 
       return (
@@ -44,17 +44,17 @@ import { useState, useEffect } from "react";
             <div className="flex flex-col gap-4">
               <button
                 onClick={() => handleLoginClick("Google")}
-                disabled={loading}
+                disabled={loading !== null}
                 className="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-blue-700 transition disabled:bg-gray-500"
               >
-                {loading ? "Logging in..." : "Continue with Google"}
+                {loading === "Google" ? "Logging in..." : "Continue with Google"}
               </button>
               <button
                 onClick={() => handleLoginClick("Guest")}
-                disabled={loading}
+                disabled={loading !== null}
                 className="w-full bg-gray-600 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-gray-700 transition disabled:bg-gray-500"
               >
-                {loading ? "Logging in..." : "Continue as Guest"}
+                {loading === "Guest" ? "Logging in..." : "Continue as Guest"}
               </button>
             </div>
           </div>
@@ -72,8 +72,9 @@ import { useState, useEffect } from "react";
 
       return (
           <div className="flex flex-col items-center justify-center min-h-screen p-4">
+            <h1 className="text-4xl font-bold text-white mb-8">TasteBuds</h1>
             <div className="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-8 text-center">
-              <h1 className="text-4xl font-bold text-white mb-8">TasteBuds</h1>
+
 
               {errorMessage && <p className="text-red-400 mb-4">{errorMessage}</p>}
 
