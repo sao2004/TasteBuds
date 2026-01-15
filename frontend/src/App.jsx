@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-    import { signInAnonymouslyWithFirebase } from "./auth";
+    import { signInAnonymouslyWithFirebase, signInWithGoogle } from "./auth";
     import {
       getFirestore,
       doc,
@@ -10,7 +10,7 @@ import { useState, useEffect } from "react";
       onSnapshot,
     } from "firebase/firestore";
     import { auth, db } from "./firebase";
-    
+
     // importam room factory
     import RoomFactory from "./factories/RoomFactory";
 
@@ -22,6 +22,11 @@ import { useState, useEffect } from "react";
         setLoading(true);
         if (type === "Guest") {
           await onLogin();
+        } else if (type === "Google") {
+          const uid = await signInWithGoogle();
+          if (uid) {
+            await onLogin({ id: uid, name: "Google user" });
+          }
         } else {
           console.log("Login type not implemented:", type);
         }
@@ -34,6 +39,13 @@ import { useState, useEffect } from "react";
           <div className="w-full max-w-sm bg-gray-800 rounded-2xl shadow-2xl p-8">
             <h2 className="text-2xl text-center font-semibold mb-6">Login</h2>
             <div className="flex flex-col gap-4">
+              <button
+                onClick={() => handleLoginClick("Google")}
+                disabled={loading}
+                className="w-full bg-blue-600 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-blue-700 transition disabled:bg-gray-500"
+              >
+                {loading ? "Logging in..." : "Continue with Google"}
+              </button>
               <button
                 onClick={() => handleLoginClick("Guest")}
                 disabled={loading}
@@ -136,7 +148,7 @@ import { useState, useEffect } from "react";
           <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
             <h2 className="text-3xl font-bold text-white mb-8">All Done!</h2>
             <p className="text-gray-400 mb-8">Everyone has finished swiping. Ready to pick a winner?</p>
-            
+
             <div className="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-8 mb-6">
               <h3 className="text-xl font-bold text-white mb-4">Matched Restaurants ({matches.length})</h3>
               <ul className="space-y-2 mb-6">
@@ -146,7 +158,7 @@ import { useState, useEffect } from "react";
                   </li>
                 ))}
               </ul>
-              
+
               <button
                 onClick={onSelectWinner}
                 className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-4 px-6 rounded-lg text-xl hover:from-purple-700 hover:to-pink-700 transition transform hover:scale-105 shadow-lg"
@@ -176,11 +188,11 @@ import { useState, useEffect } from "react";
       // Daca avem winner, il afisam
       if (roomData.winner) {
         const winnerRestaurant = roomData.restaurants.find(r => r.id === roomData.winner);
-        
+
         return (
           <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
             <h2 className="text-4xl font-bold text-white mb-4">  Winner! </h2>
-            
+
             <div className="w-full max-w-md bg-gradient-to-br from-purple-800 to-pink-800 rounded-2xl shadow-2xl overflow-hidden mb-6">
               <img
                 src={winnerRestaurant.photo || "https://placehold.co/600x400?text=No+Image"}
@@ -192,7 +204,7 @@ import { useState, useEffect } from "react";
                   {winnerRestaurant.name}
                 </h2>
                 <p className="text-lg text-gray-200 mb-6">{winnerRestaurant.cuisine}</p>
-                
+
                 <button
                   onClick={() => handleViewRoute(winnerRestaurant)}
                   className="w-full bg-blue-600 text-white font-bold py-4 px-6 rounded-lg text-xl hover:bg-blue-700 transition transform hover:scale-105 shadow-lg"
@@ -339,13 +351,17 @@ import { useState, useEffect } from "react";
         return () => unsubscribe();
       }, [roomId]);
 
-      const handleLogin = async () => {
+      const handleLogin = async (googleUser = null) => {
         setLoading(true);
         setErrorMessage("");
         try {
-          const uid = await signInAnonymouslyWithFirebase();
-          if (uid) setUser({ id: uid, name: "Guest" });
-          else setErrorMessage("Anonymous login failed.");
+          if(googleUser)
+            setUser(googleUser)
+          else{
+            const uid = await signInAnonymouslyWithFirebase();
+            if (uid) setUser({ id: uid, name: "Guest" });
+            else setErrorMessage("Anonymous login failed.");
+          }
         } catch (error) {
           setErrorMessage(error.message);
         }
@@ -361,7 +377,7 @@ import { useState, useEffect } from "react";
         navigator.geolocation.getCurrentPosition(
           async (pos) => {
             try {
-              // Aici preiau restaurantul 
+              // Aici preiau restaurantul
               const { latitude, longitude } = pos.coords;
               const res = await fetch(
                 `http://localhost:5000/get_restaurants?lat=${latitude}&long=${longitude}`,
@@ -374,7 +390,7 @@ import { useState, useEffect } from "react";
 
               // factory pattern
               const newRoomData = RoomFactory.create(user.id, filtered);
-              
+
               const roomRef = doc(db, "rooms", newRoomData.id);
               await setDoc(roomRef, newRoomData);
 
@@ -448,11 +464,11 @@ import { useState, useEffect } from "react";
 
       const handleSelectWinner = async () => {
         if (!roomData || roomData.matches.length === 0) return;
-        
+
         // Selectam random un restaurant din matches
         const randomIndex = Math.floor(Math.random() * roomData.matches.length);
         const winnerId = roomData.matches[randomIndex];
-        
+
         const roomRef = doc(db, "rooms", roomId);
         await updateDoc(roomRef, { winner: winnerId });
       };
