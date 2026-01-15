@@ -91,7 +91,7 @@ import { useState, useEffect } from "react";
     }
 
     // Choose Restaurants
-    function SwipeScreen({ roomData, onLeave, onSwipe, userId }) {
+    function SwipeScreen({ roomData, onLeave, onSwipe, userId, onSelectWinner }) {
       const [copySuccess, setCopySuccess] = useState(false);
       const mySwipes = roomData.swipes[userId] || {};
       const nextRestaurant = roomData.restaurants.find(
@@ -100,6 +100,12 @@ import { useState, useEffect } from "react";
       const matches = roomData.restaurants.filter((r) =>
         roomData.matches.includes(r.id),
       );
+
+      // Verificam daca toti userii au terminat swipe-urile
+      const allUsersDone = roomData.users.every((uid) => {
+        const userSwipes = roomData.swipes[uid] || {};
+        return roomData.restaurants.every((r) => userSwipes[r.id] !== undefined);
+      });
 
       const handleCopyRoomCode = () => {
         const input = document.createElement("input");
@@ -118,6 +124,99 @@ import { useState, useEffect } from "react";
         document.body.removeChild(input);
       };
 
+      const handleViewRoute = (restaurant) => {
+        // Deschidem Google Maps cu directii catre restaurant
+        const url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(restaurant.name)}&destination_place_id=${restaurant.id}`;
+        window.open(url, '_blank');
+      };
+
+      // Daca toti au terminat si avem matches, afisam ecranul de winner
+      if (!nextRestaurant && allUsersDone && matches.length > 0 && !roomData.winner) {
+        return (
+          <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
+            <h2 className="text-3xl font-bold text-white mb-8">All Done!</h2>
+            <p className="text-gray-400 mb-8">Everyone has finished swiping. Ready to pick a winner?</p>
+            
+            <div className="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-8 mb-6">
+              <h3 className="text-xl font-bold text-white mb-4">Matched Restaurants ({matches.length})</h3>
+              <ul className="space-y-2 mb-6">
+                {matches.map((r) => (
+                  <li key={r.id} className="text-white text-lg">
+                    {r.name}
+                  </li>
+                ))}
+              </ul>
+              
+              <button
+                onClick={onSelectWinner}
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-4 px-6 rounded-lg text-xl hover:from-purple-700 hover:to-pink-700 transition transform hover:scale-105 shadow-lg"
+              >
+                🎲 Pick Random Winner!
+              </button>
+            </div>
+
+            <div className="p-4 bg-gray-800 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-2 w-full max-w-md">
+              <div className="text-center sm:text-left">
+                <span className="text-gray-400 text-sm">Room Code:</span>
+                <span className="text-white font-mono text-2xl ml-2">
+                  {roomData.id}
+                </span>
+              </div>
+              <button
+                onClick={handleCopyRoomCode}
+                className="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-md hover:bg-green-700 transition w-full sm:w-auto"
+              >
+                {copySuccess ? "Copied!" : "Copy Code"}
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      // Daca avem winner, il afisam
+      if (roomData.winner) {
+        const winnerRestaurant = roomData.restaurants.find(r => r.id === roomData.winner);
+        
+        return (
+          <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
+            <h2 className="text-4xl font-bold text-white mb-4">  Winner! </h2>
+            
+            <div className="w-full max-w-md bg-gradient-to-br from-purple-800 to-pink-800 rounded-2xl shadow-2xl overflow-hidden mb-6">
+              <img
+                src={winnerRestaurant.photo || "https://placehold.co/600x400?text=No+Image"}
+                alt={winnerRestaurant.name}
+                className="w-full h-64 object-cover"
+              />
+              <div className="p-6">
+                <h2 className="text-3xl font-bold text-white mb-2">
+                  {winnerRestaurant.name}
+                </h2>
+                <p className="text-lg text-gray-200 mb-6">{winnerRestaurant.cuisine}</p>
+                
+                <button
+                  onClick={() => handleViewRoute(winnerRestaurant)}
+                  className="w-full bg-blue-600 text-white font-bold py-4 px-6 rounded-lg text-xl hover:bg-blue-700 transition transform hover:scale-105 shadow-lg"
+                >
+                  📍 Get Directions
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 bg-gray-800 rounded-lg w-full max-w-md">
+              <p className="text-gray-400 text-sm mb-2">All Matches:</p>
+              <ul className="space-y-1">
+                {matches.map((r) => (
+                  <li key={r.id} className={`text-white ${r.id === roomData.winner ? 'font-bold text-green-400' : ''}`}>
+                    {r.name} {r.id === roomData.winner && '👑'}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        );
+      }
+
+      // Daca nu am terminat de swipe-uit
       if (!nextRestaurant) {
         return (
           <div className="flex flex-col items-center min-h-screen p-4 pt-8 md:p-8 text-center">
@@ -142,67 +241,71 @@ import { useState, useEffect } from "react";
       }
 
       return (
-        <div className="flex flex-col items-center min-h-screen p-4 pt-8 md:p-8">
-          {/* Room code */}
-          <div className="mb-6 p-4 bg-gray-800 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-2 w-full max-w-md">
-            <div className="text-center sm:text-left">
-              <span className="text-gray-400 text-sm">Room Code:</span>
-              <span className="text-white font-mono text-2xl ml-2">
-                {roomData.id} {/* Room code */}
-              </span>
+        <div className="flex flex-col lg:flex-row items-start justify-center min-h-screen p-4 pt-8 md:p-8 gap-6">
+          {/* Partea stanga - Restaurant card */}
+          <div className="flex flex-col items-center w-full lg:w-auto">
+            {/* Room code */}
+            <div className="mb-6 p-4 bg-gray-800 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-2 w-full max-w-md">
+              <div className="text-center sm:text-left">
+                <span className="text-gray-400 text-sm">Room Code:</span>
+                <span className="text-white font-mono text-2xl ml-2">
+                  {roomData.id} {/* Room code */}
+                </span>
+              </div>
+              <button
+                onClick={handleCopyRoomCode}
+                className="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-md hover:bg-green-700 transition w-full sm:w-auto"
+              >
+                {copySuccess ? "Copied!" : "Copy Code"}
+              </button>
             </div>
-            <button
-              onClick={handleCopyRoomCode}
-              className="px-4 py-2 bg-green-600 text-white text-sm font-semibold rounded-md hover:bg-green-700 transition w-full sm:w-auto"
-            >
-              {copySuccess ? "Copied!" : "Copy Code"}
-            </button>
+
+            {/* Restaurant afisare */}
+            <div className="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
+              <img
+                src={
+                  nextRestaurant.photo || "https://placehold.co/600x400?text=No+Image"
+                }
+                alt={nextRestaurant.name}
+                className="w-full h-64 object-cover"
+              />
+              <div className="p-6">
+                <h2 className="text-3xl font-bold text-white mb-2">
+                  {nextRestaurant.name}
+                </h2>
+                <p className="text-lg text-gray-400 mb-6">{nextRestaurant.cuisine}</p>
+                <div className="flex justify-around gap-4">
+                  <button
+                    onClick={() => onSwipe(nextRestaurant.id, "left")}
+                    className="w-1/2 bg-red-600 text-white font-bold py-4 px-6 rounded-lg text-2xl hover:bg-red-700 transition transform hover:scale-105"
+                  >
+                    No
+                  </button>
+                  <button
+                    onClick={() => onSwipe(nextRestaurant.id, "right")}
+                    className="w-1/2 bg-green-600 text-white font-bold py-4 px-6 rounded-lg text-2xl hover:bg-green-700 transition transform hover:scale-105"
+                  >
+                    Yes
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Matches */}
+          {/* Partea dreapta - Matches */}
           {matches.length > 0 && (
-            <div className="w-full max-w-md mb-6 p-4 bg-gray-700 rounded-lg">
-              <h3 className="text-xl font-bold text-white mb-2">Matches</h3>
-              <ul className="space-y-2">
+            <div className="w-full lg:w-80 p-4 bg-gray-700 rounded-lg lg:sticky lg:top-8">
+              <h3 className="text-xl font-bold text-white mb-4">🎯 Matches ({matches.length})</h3>
+              <ul className="space-y-3">
                 {matches.map((r) => (
-                  <li key={r.id} className="text-white">
-                    {r.name}
+                  <li key={r.id} className="bg-gray-800 p-3 rounded-lg">
+                    <p className="text-white font-semibold">{r.name}</p>
+                    <p className="text-gray-400 text-sm">{r.cuisine}</p>
                   </li>
                 ))}
               </ul>
             </div>
           )}
-
-          {/* Restaurant afisare */}
-          <div className="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl overflow-hidden">
-            <img
-              src={
-                nextRestaurant.photo || "https://placehold.co/600x400?text=No+Image"
-              }
-              alt={nextRestaurant.name}
-              className="w-full h-64 object-cover"
-            />
-            <div className="p-6">
-              <h2 className="text-3xl font-bold text-white mb-2">
-                {nextRestaurant.name}
-              </h2>
-              <p className="text-lg text-gray-400 mb-6">{nextRestaurant.cuisine}</p>
-              <div className="flex justify-around gap-4">
-                <button
-                  onClick={() => onSwipe(nextRestaurant.id, "left")}
-                  className="w-1/2 bg-red-600 text-white font-bold py-4 px-6 rounded-lg text-2xl hover:bg-red-700 transition transform hover:scale-105"
-                >
-                  No
-                </button>
-                <button
-                  onClick={() => onSwipe(nextRestaurant.id, "right")}
-                  className="w-1/2 bg-green-600 text-white font-bold py-4 px-6 rounded-lg text-2xl hover:bg-green-700 transition transform hover:scale-105"
-                >
-                  Yes
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       );
     }
@@ -343,6 +446,17 @@ import { useState, useEffect } from "react";
         }
       };
 
+      const handleSelectWinner = async () => {
+        if (!roomData || roomData.matches.length === 0) return;
+        
+        // Selectam random un restaurant din matches
+        const randomIndex = Math.floor(Math.random() * roomData.matches.length);
+        const winnerId = roomData.matches[randomIndex];
+        
+        const roomRef = doc(db, "rooms", roomId);
+        await updateDoc(roomRef, { winner: winnerId });
+      };
+
       if (!user) return <LoginScreen onLogin={handleLogin} />;
       if (!roomData)
         return (
@@ -359,6 +473,7 @@ import { useState, useEffect } from "react";
           onLeave={handleLeaveRoom}
           onSwipe={handleSwipe}
           userId={user.id}
+          onSelectWinner={handleSelectWinner}
         />
       );
     }
