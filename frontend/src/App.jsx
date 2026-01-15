@@ -14,6 +14,9 @@ import { useState, useEffect } from "react";
     // importam room factory
     import RoomFactory from "./factories/RoomFactory";
 
+    // importam facade pentru istoric
+    import HistoryService from "./services/HistoryService";
+
     // LoginScreen
     function LoginScreen({ onLogin }) {
       const [loading, setLoading] = useState(false);
@@ -60,7 +63,7 @@ import { useState, useEffect } from "react";
     }
 
     // HomeScreen
-    function HomeScreen({ onCreate, onJoin, loading, errorMessage }) {
+    function HomeScreen({ onCreate, onJoin, loading, errorMessage, history = []}) {
       const [roomCode, setRoomCode] = useState("");
 
       const handleJoinClick = () => {
@@ -68,39 +71,59 @@ import { useState, useEffect } from "react";
       };
 
       return (
-        <div className="flex flex-col items-center justify-center min-h-screen p-4">
-          <div className="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-8 text-center">
-            <h1 className="text-4xl font-bold text-white mb-8">Start a Room</h1>
-            {errorMessage && <p className="text-red-400 mb-4">{errorMessage}</p>}
-            <button
-              onClick={onCreate}
-              disabled={loading}
-              className="w-full bg-green-600 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-green-700 transition shadow-lg mb-6 disabled:bg-gray-500"
-            >
-              {loading ? "Finding location..." : "Find Restaurants Near Me"}
-            </button>
+          <div className="flex flex-col items-center justify-center min-h-screen p-4">
+            <div className="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl p-8 text-center">
+              <h1 className="text-4xl font-bold text-white mb-8">TasteBuds</h1>
 
-            <div className="flex flex-col gap-4">
-              <input
-                type="text"
-                value={roomCode}
-                onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                placeholder="Enter Room Code"
-                disabled={loading}
-                className="w-full bg-gray-700 border border-gray-600 text-white text-center rounded-lg p-3 text-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-600"
-              />
+              {errorMessage && <p className="text-red-400 mb-4">{errorMessage}</p>}
+
               <button
-                onClick={handleJoinClick}
+                onClick={onCreate}
                 disabled={loading}
-                className="w-full bg-gray-600 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-gray-700 transition shadow-lg disabled:bg-gray-500"
+                className="w-full bg-green-600 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-green-700 transition shadow-lg mb-6 disabled:bg-gray-500"
               >
-                Join Room
+                {loading ? "Finding location..." : "Find Restaurants Near Me"}
               </button>
+
+              <div className="flex flex-col gap-4">
+                <input
+                  type="text"
+                  value={roomCode}
+                  onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                  placeholder="Enter Room Code"
+                  disabled={loading}
+                  className="w-full bg-gray-700 border border-gray-600 text-white text-center rounded-lg p-3 text-lg placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-600"
+                />
+                <button
+                  onClick={handleJoinClick}
+                  disabled={loading}
+                  className="w-full bg-gray-600 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-gray-700 transition shadow-lg disabled:bg-gray-500"
+                >
+                  Join Room
+                </button>
+              </div>
+
+              {history && history.length > 0 && (
+                <div className="mt-10 border-t border-gray-700 pt-6 text-left">
+                  <h3 className="text-white font-bold mb-4 flex items-center gap-2">
+                    <span>🕒</span> Restaurante vizitate:
+                  </h3>
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-2 custom-scrollbar">
+                    {history.map((h, i) => (
+                      <div key={i} className="bg-gray-700 p-3 rounded-lg flex justify-between items-center border-l-4 border-green-500">
+                        <span className="text-white font-medium">{h.name}</span>
+                        <span className="text-gray-400 text-xs">
+                          {h.date ? new Date(h.date).toLocaleDateString('ro-RO') : ""}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      );
-    }
+        );
+      }
 
     // Choose Restaurants
     function SwipeScreen({ roomData, onLeave, onSwipe, userId, onSelectWinner }) {
@@ -163,7 +186,7 @@ import { useState, useEffect } from "react";
                 onClick={onSelectWinner}
                 className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-4 px-6 rounded-lg text-xl hover:from-purple-700 hover:to-pink-700 transition transform hover:scale-105 shadow-lg"
               >
-                🎲 Pick Random Winner!
+                Pick Random Winner!
               </button>
             </div>
 
@@ -209,7 +232,15 @@ import { useState, useEffect } from "react";
                   onClick={() => handleViewRoute(winnerRestaurant)}
                   className="w-full bg-blue-600 text-white font-bold py-4 px-6 rounded-lg text-xl hover:bg-blue-700 transition transform hover:scale-105 shadow-lg"
                 >
-                  📍 Get Directions
+                  Get Directions
+                </button>
+
+                {/* BUTONUL BACK TO HOME */}
+                <button
+                onClick={onLeave}
+                className="w-full bg-gray-700 text-white font-bold py-3 px-6 rounded-lg text-lg hover:bg-gray-600 transition"
+                >
+                  Back to Home
                 </button>
               </div>
             </div>
@@ -329,6 +360,53 @@ import { useState, useEffect } from "react";
       const [roomData, setRoomData] = useState(null);
       const [loading, setLoading] = useState(false);
       const [errorMessage, setErrorMessage] = useState("");
+      const [history, setHistory] = useState([]);
+
+      // Sincronizare istoric
+        useEffect(() => {
+          if (!user?.id || user?.name === "Guest") {
+              setHistory([]);
+              return;
+          }
+
+          try{
+            const unsubscribe = HistoryService.subscribeToHistory(user.id, (data) => {
+              setHistory(data);
+            });
+
+            return () => unsubscribe();
+          } catch (error) {
+            console.error("Error loading history", error);
+          }
+        }, [user?.id, user?.name]);
+
+        // Salvare castigator in istoric
+        useEffect(() => {
+
+          const isGoogleUser = user?.id && user?.name !== "Guest";
+
+          if (roomData?.winner && isGoogleUser && roomId) {
+
+            console.log("Verify winner for user:", user.id);
+
+            const winnerExists = roomData.restaurants.find(r => r.id === roomData.winner);
+
+            if (winnerExists) {
+              console.log("Writing to HistoryService...");
+
+              HistoryService.syncWinnerToHistory(
+                user.id,
+                roomId,
+                roomData.winner,
+                roomData.restaurants
+              ).then(() => {
+                console.log("Done!");
+              }).catch(err => {
+                console.error("Error in writing ", err);
+              });
+            }
+          }
+        }, [roomData?.winner, user?.id, user?.name, roomId, roomData?.restaurants]);
 
       useEffect(() => {
         if (!roomId) return setRoomData(null);
@@ -470,7 +548,11 @@ import { useState, useEffect } from "react";
         const winnerId = roomData.matches[randomIndex];
 
         const roomRef = doc(db, "rooms", roomId);
-        await updateDoc(roomRef, { winner: winnerId });
+        try{
+          await updateDoc(roomRef, { winner: winnerId });
+        } catch (error) {
+          console.error("Error selecting winner:", error);
+        }
       };
 
       if (!user) return <LoginScreen onLogin={handleLogin} />;
@@ -481,6 +563,7 @@ import { useState, useEffect } from "react";
             onJoin={handleJoinRoom}
             loading={loading}
             errorMessage={errorMessage}
+            history={history}
           />
         );
       return (
